@@ -16,13 +16,6 @@ body {
   margin-top: 20px;
 }
 
-#coverFlowTest .coverFlowLabel {
-	margin-top:   10px;
-	font-size:    14px;
-	color:        #C0C0C0;
-	font-weight:  bold;
-}
-
 canvas {
   border: 0px solid green;
 }

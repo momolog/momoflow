@@ -11,9 +11,6 @@
 	CoverFlow.DEFAULT_WIDTH     = 800;
 	CoverFlow.DEFAULT_BG_COLOR  = '#000000'; 
 	CoverFlow.IMAGE_SEPARATION  = 50;
-	CoverFlow.RIGHT             = 'right';
-	CoverFlow.LEFT              = 'left';
-	CoverFlow.LABEL_CLASS       = 'coverFlowLabel';
 	
 	CoverFlow.prototype = {
 		images:           [],	
@@ -86,7 +83,6 @@
 		},
 		
 		initCoverFlow: function(){
-			
 			for(var i=0; i < this.coverFlowItems.length; i++){
 				var item = this.coverFlowItems[i];
 				
@@ -101,7 +97,7 @@
 					this.showLabel(item.label);
 				}else{
 					angle = this.perspectiveAngle;
-					direction = CoverFlow.LEFT;
+					direction = 'left';
 					item.setZIndex(this.imageZIndex - i);
 					item.setLeft( this.getRightStart()+ (i - 1)* CoverFlow.IMAGE_SEPARATION);
 					item.isSelected(false);
@@ -112,16 +108,13 @@
 		},
 		
 		createLabelElement: function(){
-			var label = document.createElement('div');
-			label.id = Dom.generateId();
-			label.style.position = 'absolute';
-			label.style.top = this.getFooterOffset() + 'px';
-			label.innerHTML = ' ';
-			label.style.textAlign = 'center';
-			label.style.width = this.containerWidth + 'px';
-			label.style.zIndex = this.selectedImageZIndex + 10;
-			label.className = CoverFlow.LABEL_CLASS;
-			this.labelElement = this.element.appendChild(label);
+			var label             = document.createElement('div');
+			label.className       = 'coverFlowLabel';
+			label.id              = Dom.generateId();
+			label.style.top       = (this.containerHeight * this.imageHeightRatio * 1.3) + 'px';
+			label.style.width     = this.containerWidth + 'px';
+			label.style.zIndex    = this.selectedImageZIndex + 10;
+			this.labelElement     = this.element.appendChild(label);
 		},
 		
 		showLabel: function(text){
@@ -141,37 +134,46 @@
 		
 		
 		selectNext: function(){
-			if(this.animationWorking){
-				this.moveQueue.push('moveLeft');
-				return;
-			}
-			
+      this.move('left');
+		},
+
+		selectPrevious: function(){
+      this.move('right');
+		},
+
+    move: function(dir){
+      var last = (dir == 'left') ? this.coverFlowItems.length-1 : 0;
+
+		  if(this.selectedItem == last) return;
+			if(this.animationWorking) return this.moveQueue.push(dir);
+
+      var inc  = (dir == 'left') ? +1 : -1;
+
 			var animateItems = [];
 			
 			for(var i=0; i < this.coverFlowItems.length; i++){
-				var item = this.coverFlowItems[i];
-				var isLast = (this.selectedItem == this.coverFlowItems.length -1);
-				if(!isLast){
-					var distance = i-this.selectedItem;
+        var item = this.coverFlowItems[i];
+        if(i == this.selectedItem){
+          if (dir == 'right') animateItems.pop();
 
-					if(distance == 0){// selected
-						item.setZIndex(this.imageZIndex);
-						item.isSelected(false);
-						animateItems.push({item: item, attribute:{angle: {start: 0, end: this.perspectiveAngle} } });
+          item.setZIndex(this.imageZIndex);
+          item.isSelected(false);
+          animateItems.push({item: item, attribute:{angle: {start: 0, end: this.perspectiveAngle} } });
 
-						item = this.coverFlowItems[++i];
-						item.isSelected(true);
-						animateItems.push({item: item, attribute:{angle: {start: this.perspectiveAngle, end: 0} } });
-						this.showLabel(item.label);
-						
-					}else{
-						animateItems.push({item: item, attribute: {left: {start:item.getLeft(), end: item.getLeft() - CoverFlow.IMAGE_SEPARATION} }});
-					}
-				}
-			}
+          item = this.coverFlowItems[i+inc];
+          item.isSelected(true);
+          animateItems.push({item: item, attribute:{angle: {start: this.perspectiveAngle, end: 0} } });
+          this.showLabel(item.label);
+
+          if (dir == 'left') i++;
+        } else {
+          item.setZIndex(item.getZIndex() - 1);
+          animateItems.push({item: item, attribute: {left: {start:item.getLeft(), end: item.getLeft() - inc * CoverFlow.IMAGE_SEPARATION} }});
+        }
+      }
 			
 			var animation = new CoverFlowAnimation({
-          direction:      CoverFlow.LEFT,
+          direction:      dir,
           center:         this.getCenter(),
           startLeftPos:   this.getLeftStart(),
           startRightPos:  this.getRightStart()
@@ -184,57 +186,14 @@
 
 			animation.animate();
 
-			if(this.selectedItem + 1 < this.coverFlowItems.length)
-				this.selectedItem++;
-		},
-
-		selectPrevious: function(){
-			if(this.animationWorking){
-				this.moveQueue.push('moveRight');
-				return;
-			}
-			
-			var animateItems = [];
-			
-			for(var i=0; i < this.coverFlowItems.length; i++){
-				var item = this.coverFlowItems[i];
-				var isFirst = (this.selectedItem == 0);
-				var distance = i-this.selectedItem;
-				if(!isFirst){
-					if(distance == - 1){
-						item.setZIndex(this.selectedImageZIndex);
-						item.isSelected(true);
-						animateItems.push({item: item, attribute: {angle: {start: this.perspectiveAngle, end: 0}}});
-						this.showLabel(item.label);
-						
-						item = this.coverFlowItems[++i];
-						item.isSelected(false);
-						item.setZIndex(this.imageZIndex);
-						animateItems.push({item: item, attribute: {angle: {start: 0, end: this.perspectiveAngle}}});
-					}else{
-						item.setZIndex(item.getZIndex() - 1);
-						animateItems.push({item: item, attribute: {left: {start:item.getLeft(), end: item.getLeft() + CoverFlow.IMAGE_SEPARATION} }});
-					}
-				}
-			}
-
-			var animation = new CoverFlowAnimation({
-          direction:      CoverFlow.RIGHT,
-          center:         this.getCenter(),
-          startLeftPos:   this.getLeftStart(),
-          startRightPos:  this.getRightStart()
-        }, 
-        animateItems, 0.5
-      );
-			
-			animation.onStart.subscribe(this.handleAnimationWorking, this);
-			animation.onComplete.subscribe(this.handleQueuedMove, this);
-			
-			animation.animate();
-
-			if(this.selectedItem > 0)
-				this.selectedItem--;
-		},
+      if (dir == 'left') {
+        if(this.selectedItem + 1 < this.coverFlowItems.length)
+          this.selectedItem++;
+      } else {
+        if(this.selectedItem > 0)
+          this.selectedItem--;
+      }
+    },
 		
 		handleAnimationWorking: function(a, b, cf){
 			cf.animationWorking = true;
@@ -242,10 +201,9 @@
 		
 		handleQueuedMove: function(msg, data, cf){
 			cf.animationWorking = false;
-			
-			var next = cf.moveQueue.pop();
-			if(next == 'moveLeft')  cf.selectNext();
-			if(next == 'moveRight') cf.selectPrevious();
+
+		  var dir;
+			if (dir = cf.moveQueue.pop()) cf.move(dir);
 		},
 		
 		getCenter: function(){
@@ -343,9 +301,6 @@
 			return (this.containerWidth * this.imageWidthRatio);
 		},
 		
-		getFooterOffset: function(){
-			return this.containerHeight * this.imageHeightRatio;
-		}
 	};
 	
 	
@@ -486,7 +441,7 @@
 			
 			if(alpha > 0){ // if we have an angle greater than 0 then apply the perspective
         // console.log('drawing image with perspective: '+canvas.id);  
-				var right = (direction == CoverFlow.RIGHT);
+				var right = (direction == 'right');
 
 				var initialX=0, finalX=0, initialY=0, finalY=0;
 
@@ -691,7 +646,7 @@
         				runtimeItem.attribute[attr].perspectiveDirection = this.direction;
         				runtimeItem.attribute[attr].center = true;
         			}else{
-        				runtimeItem.attribute[attr].perspectiveDirection = this.direction == CoverFlow.RIGHT ? CoverFlow.LEFT : CoverFlow.RIGHT;
+        				runtimeItem.attribute[attr].perspectiveDirection = this.direction == 'right' ? 'left' : 'right';
         				runtimeItem.attribute[attr].center = false;
         			}
         		}
@@ -711,7 +666,7 @@
         			if(item.attribute[attr].center){
         				left = this.doMethod(item.item.getLeft(), this.center - item.item.element.width/2);
         			}else{
-        				if(this.direction == CoverFlow.LEFT)
+        				if(this.direction == 'left')
         					left = this.doMethod(item.item.getLeft(), this.startLeftPos - item.item.element.width);
         				else
         					left = this.doMethod(item.item.getLeft(), this.startRightPos);
