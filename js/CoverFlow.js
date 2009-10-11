@@ -97,7 +97,7 @@
 					this.showLabel(item.label);
 				}else{
 					angle = this.perspectiveAngle;
-					direction = 'left';
+					direction = 1;
 					item.setZIndex(this.imageZIndex - i);
 					item.setLeft( this.getRightStart()+ (i - 1)* CoverFlow.IMAGE_SEPARATION);
 					item.isSelected(false);
@@ -126,49 +126,47 @@
 			new YAHOO.util.KeyListener(document, { keys:37 }, { fn:this.selectPrevious, scope:this, correctScope:true } ).enable();
 		},
 		
-		select: function(e,coverFlowItem){
+		select: function(e, coverFlowItem){
 			var distance = this.selectedItem - coverFlowItem.index;
 			for(var i=0; i < Math.abs(distance); i++)
-			  this[(distance < 0) ? 'selectNext' : 'selectPrevious']();
+			  this.move((distance < 0) ? 1 : -1);
 		},
 		
 		
 		selectNext: function(){
-      this.move('left');
+      this.move(1);
 		},
 
 		selectPrevious: function(){
-      this.move('right');
+      this.move(-1);
 		},
 
     move: function(dir){
-      var last = (dir == 'left') ? this.coverFlowItems.length-1 : 0;
+      var last = (dir == 1) ? this.coverFlowItems.length-1 : 0;
 
 		  if(this.selectedItem == last) return;
 			if(this.animationWorking) return this.moveQueue.push(dir);
-
-      var inc  = (dir == 'left') ? +1 : -1;
 
 			var animateItems = [];
 			
 			for(var i=0; i < this.coverFlowItems.length; i++){
         var item = this.coverFlowItems[i];
         if(i == this.selectedItem){
-          if (dir == 'right') animateItems.pop();
+          if (dir == -1) animateItems.pop();
 
           item.setZIndex(this.imageZIndex);
           item.isSelected(false);
           animateItems.push({item: item, attribute:{angle: {start: 0, end: this.perspectiveAngle} } });
 
-          item = this.coverFlowItems[i+inc];
+          item = this.coverFlowItems[i+dir];
           item.isSelected(true);
           animateItems.push({item: item, attribute:{angle: {start: this.perspectiveAngle, end: 0} } });
           this.showLabel(item.label);
 
-          if (dir == 'left') i++;
+          if (dir == 1) i++;
         } else {
           item.setZIndex(item.getZIndex() - 1);
-          animateItems.push({item: item, attribute: {left: {start:item.getLeft(), end: item.getLeft() - inc * CoverFlow.IMAGE_SEPARATION} }});
+          animateItems.push({item: item, attribute: {left: {start:item.getLeft(), end: item.getLeft() - dir * CoverFlow.IMAGE_SEPARATION} }});
         }
       }
 			
@@ -186,13 +184,8 @@
 
 			animation.animate();
 
-      if (dir == 'left') {
-        if(this.selectedItem + 1 < this.coverFlowItems.length)
-          this.selectedItem++;
-      } else {
-        if(this.selectedItem > 0)
-          this.selectedItem--;
-      }
+      if(dir * this.selectedItem < dir * last)
+        this.selectedItem += dir;
     },
 		
 		handleAnimationWorking: function(a, b, cf){
@@ -423,9 +416,9 @@
 		
 		drawInPerspective: function(direction, frameSize){
       console.log("DIP");
-			var canvas = this.element;
-			var image = this.canvas;
-			var angle = Math.ceil(this.angle);
+			var canvas  = this.element;
+			var image   = this.canvas;
+			var angle   = Math.ceil(this.angle);
 			var ctx;
 			var originalWidth     = image.width;
 			var originalHeight    = image.height;
@@ -441,7 +434,7 @@
 			
 			if(alpha > 0){ // if we have an angle greater than 0 then apply the perspective
         // console.log('drawing image with perspective: '+canvas.id);  
-				var right = (direction == 'right');
+				var right = (direction == -1);
 
 				var initialX=0, finalX=0, initialY=0, finalY=0;
 
@@ -541,7 +534,8 @@
 	};	
 	
 	CoverFlowAnimation.prototype = {
-		method :        YAHOO.util.Easing.easeNone,
+    sign:           function(x) { return (x>0)?1:(x<0)?-1:0},
+		method:         YAHOO.util.Easing.easeNone,
 		animated:       false,
 		useSeconds :    true, // default to seconds
 			
@@ -617,15 +611,6 @@
         
         doOnTween : function() {
           console.log('DOT');
-          var data = {
-            duration: new Date() - this.getStartTime(),
-            currentFrame: this.currentFrame
-          };
-          
-          data.toString = function() {
-            return ( 'duration: ' + data.duration + ', currentFrame: ' + data.currentFrame);
-          };
-          
           for (var i=0; i < this.runtimeItems.length; i++) 
             this.setItemAttributes(this.runtimeItems[i]); 
         },
@@ -636,19 +621,15 @@
         },
         
         setRuntimeItem: function(item){
-        	var runtimeItem = {};
-        	runtimeItem.item = item.item;
-        	runtimeItem.attribute = {};
+        	var runtimeItem = {
+            item:       item.item,
+            attribute:  item.attribute
+          };
         	for(var attr in item.attribute){
-        		runtimeItem.attribute[attr] = item.attribute[attr];
         		if(attr == 'angle'){
-        			if(item.attribute[attr].start - item.attribute[attr].end > 0){
-        				runtimeItem.attribute[attr].perspectiveDirection = this.direction;
-        				runtimeItem.attribute[attr].center = true;
-        			}else{
-        				runtimeItem.attribute[attr].perspectiveDirection = this.direction == 'right' ? 'left' : 'right';
-        				runtimeItem.attribute[attr].center = false;
-        			}
+              var sign = this.sign(item.attribute[attr].start - item.attribute[attr].end);
+        			runtimeItem.attribute[attr].perspectiveDirection = this.direction * sign;
+        			runtimeItem.attribute[attr].center = (sign == 1);
         		}
         	}
         	this.runtimeItems.push(runtimeItem);
@@ -666,7 +647,7 @@
         			if(item.attribute[attr].center){
         				left = this.doMethod(item.item.getLeft(), this.center - item.item.element.width/2);
         			}else{
-        				if(this.direction == 'left')
+        				if(this.direction == 1)
         					left = this.doMethod(item.item.getLeft(), this.startLeftPos - item.item.element.width);
         				else
         					left = this.doMethod(item.item.getLeft(), this.startRightPos);
