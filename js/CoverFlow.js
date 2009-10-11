@@ -1,5 +1,7 @@
   YAHOO.namespace("ext");
 
+  Number.prototype.sign = function(){ return (this > 0) ? 1 : (this < 0) ? -1 : 0; }
+
 	YAHOO.ext.CoverFlow = function(el, userConfig){
 		this.init(el, userConfig || {});
 	};
@@ -102,7 +104,7 @@
 					item.setLeft( this.getRightStart()+ (i - 1)* CoverFlow.IMAGE_SEPARATION);
 					item.isSelected(false);
 				}
-				item.setAngle(angle);
+				item.angle = angle;
 				item.drawInPerspective(direction);
 			}
 		},
@@ -129,9 +131,8 @@
 		select: function(e, coverFlowItem){
 			var distance = this.selectedItem - coverFlowItem.index;
 			for(var i=0; i < Math.abs(distance); i++)
-			  this.move((distance < 0) ? 1 : -1);
+			  this.move(-distance.sign());
 		},
-		
 		
 		selectNext: function(){
       this.move(1);
@@ -229,18 +230,12 @@
 					bgColor:          this.backgroundColor,
 					onclick: {fn: this.select, scope: this}
 				});
-				this.alignCenterHeight(coverFlowItem);
+        coverFlowItem.element.style.position = 'absolute';
+        var imageHeight = coverFlowItem.canvas.height / 2; // reflection
+        coverFlowItem.setTop(this.getMaxImageHeight() - imageHeight );
 				this.coverFlowItems.push(coverFlowItem);
 			};
 			delete this.images;
-		},
-		
-		alignCenterHeight: function(coverFlowItem){
-			coverFlowItem.element.style.position = 'absolute';
-			var imageHeight = coverFlowItem.canvas.height / 2; // reflection
-
-			coverFlowItem.setTop(this.getMaxImageHeight() - imageHeight );
-			
 		},
 		
 		scaleHeight: function(image){
@@ -339,10 +334,6 @@
 			this.onSelected.fire();
 		},
 		
-		setAngle: function(angle){
-			this.angle = angle;
-		},
-		
 		setTop: function(top){
 			this.element.style.top = top + 'px'; 
 		},
@@ -418,6 +409,7 @@
       console.log("DIP");
 			var canvas  = this.element;
 			var image   = this.canvas;
+
 			var angle   = Math.ceil(this.angle);
 			var ctx;
 			var originalWidth     = image.width;
@@ -520,6 +512,7 @@
 				ctx = canvas.getContext('2d');
 				ctx.clearRect(0, 0, canvas.width, canvas.height);
 				ctx.drawImage(perspectiveCanvas, 0, 0);
+        
 			}
 		}
 		
@@ -534,7 +527,6 @@
 	};	
 	
 	CoverFlowAnimation.prototype = {
-    sign:           function(x) { return (x>0)?1:(x<0)?-1:0},
 		method:         YAHOO.util.Easing.easeNone,
 		animated:       false,
 		useSeconds :    true, // default to seconds
@@ -627,7 +619,7 @@
           };
         	for(var attr in item.attribute){
         		if(attr == 'angle'){
-              var sign = this.sign(item.attribute[attr].start - item.attribute[attr].end);
+              var sign = (item.attribute[attr].start - item.attribute[attr].end).sign();
         			runtimeItem.attribute[attr].perspectiveDirection = this.direction * sign;
         			runtimeItem.attribute[attr].center = (sign == 1);
         		}
@@ -640,7 +632,7 @@
         		var value = Math.ceil(this.doMethod(item.attribute[attr].start, item.attribute[attr].end));
         		
         		if(attr == 'angle'){
-        			item.item.setAngle(value);
+        			item.item.angle = value;
         			var frameSize = Math.ceil(this.doMethod(3, 1));
         			item.item.drawInPerspective(item.attribute[attr].perspectiveDirection, frameSize);
         			var left;
