@@ -11,11 +11,11 @@ body {
 }
 
 #coverFlowTest, #controls {
-  border:     0px solid magenta;
+  border:     1px solid magenta;
   margin: auto;
   margin-top: 20px;
 }
 
 canvas {
-  border: 0px solid green;
+  border: 1px solid green;
 }

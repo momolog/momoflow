@@ -224,78 +224,35 @@
 			this.coverFlowItems = [];
 			for(var i=0; i<this.images.length; i++){
 				var image = this.images[i];
+        var scaled = this.scaledDimensions(image);
 				var coverFlowItem = new CoverFlowItem(image, {
-					scaledWidth:      this.scaleWidth(image), 
-					scaledHeight:     this.scaleHeight(image), 
+					scaledWidth:      scaled.width, 
+					scaledHeight:     scaled.height, 
 					bgColor:          this.backgroundColor,
 					onclick: {fn: this.select, scope: this}
 				});
         coverFlowItem.element.style.position = 'absolute';
-        var imageHeight = coverFlowItem.canvas.height / 2; // reflection
-        coverFlowItem.setTop(this.getMaxImageHeight() - imageHeight );
+        coverFlowItem.setTop(this.containerHeight * this.imageHeightRatio - coverFlowItem.canvas.height / 2);
 				this.coverFlowItems.push(coverFlowItem);
 			};
 			delete this.images;
 		},
 		
-		scaleHeight: function(image){
-			var height = 0;
-			if(image.height <= this.getMaxImageHeight()	&& image.width <= this.getMaxImageWidth()){
-				height = image.height;
+    scaledDimensions: function(image){
+			var factor = 1.0, width = image.width, height = image.height; 
+      var maxWidth = this.containerWidth * this.imageWidthRatio, maxHeight = this.containerHeight * this.imageHeightRatio;
+
+			if(height > maxHeight	|| width > maxWidth){
+				factor = (height > width) ? maxHeight / height : maxWidth / width;
 			}
-			if(image.height > this.getMaxImageHeight()	&& image.width <= this.getMaxImageWidth()){
-				height = ((image.height / this.getMaxImageHeight())) * image.height;
-			}
-			if(image.height <= this.getMaxImageHeight()	&& image.width > this.getMaxImageWidth()){
-				height = ((image.width / this.getMaxImageWidth())) * image.height;
-			}
-			if(image.height > this.getMaxImageHeight()	&& image.width > this.getMaxImageWidth()){
-				if(image.height > image.width)
-					height = ((this.getMaxImageHeight() / image.height)) * image.height;
-				else
-					height = ((this.getMaxImageWidth() / image.width)) * image.height;
-			}
-      // console.log ("scaleheight: "+height);
-			return height;
+
+			return {width: width * factor, height: height * factor};
 		},
 
-		scaleWidth: function(image){
-			var width = 0;
-			if(image.height <= this.getMaxImageHeight()	&& image.width <= this.getMaxImageWidth()){
-				width = image.width;
-			}
-			if(image.height > this.getMaxImageHeight()	&& image.width <= this.getMaxImageWidth()){
-				width = ((image.height / this.getMaxImageHeight())) * image.width;
-			}
-			if(image.height <= this.getMaxImageHeight()	&& image.width > this.getMaxImageWidth()){
-				width = ((image.width / this.getMaxImageWidth())) * image.width;
-			}
-			if(image.height > this.getMaxImageHeight()	&& image.width > this.getMaxImageWidth()){
-				if(image.height > image.width)
-					width = ((this.getMaxImageHeight() / image.height)) * image.width;
-				else
-					width = ((this.getMaxImageWidth() / image.width)) * image.width;
-			}
-			return width;
-		},
-		
-		
-		getMaxImageHeight: function(){
-      // console.log(this.containerHeight+" "+this.imageHeightRatio);
-			return (this.containerHeight * this.imageHeightRatio);
-		},
-		
-		getMaxImageWidth: function(){
-			return (this.containerWidth * this.imageWidthRatio);
-		},
-		
 	};
 	
-	
-	/**
-	 * @class CoverFlowItem 
-	 * 
-	 */
+  /****************/
+  
 	CoverFlowItem = function(image, options){
 	 this.init(image, options);
 	};
