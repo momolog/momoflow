@@ -10,19 +10,16 @@
 	var Dom       = YAHOO.util.Dom;
 	
 	CoverFlow.DEFAULT_HEIGHT    = 300;
-	CoverFlow.DEFAULT_WIDTH     = 800;
-	CoverFlow.DEFAULT_BG_COLOR  = '#000000'; 
 	CoverFlow.IMAGE_SEPARATION  = 50;
 	
 	CoverFlow.prototype = {
 		images:           [],	
 		coverFlowItems:   [],
 		
-		imageHeightRatio: 0.5,   // seems to be the vertical position of the center of the image
-		imageWidthRatio:  0.25,
-		sideRatio:        0.25,
+		reflectionRatio:      0.3,   
+		sideRatio:            0.3,
 		
-		perspectiveAngle:     30,
+		perspectiveAngle:     20,
 		imageZIndex:          1000,
 		selectedImageZIndex:  9999,
 		selectedItem:         0,
@@ -44,8 +41,8 @@
 		
 		applyConfig: function(config){
 			this.containerHeight  = config.height   || CoverFlow.DEFAULT_HEIGHT;
-			this.containerWidth   = config.width    || CoverFlow.DEFAULT_WIDTH;
-			this.backgroundColor  = config.bgColor  || CoverFlow.DEFAULT_BG_COLOR;
+			this.containerWidth   = config.width    || parseInt(Dom.getStyle(this.element.parentNode, 'width'));
+			this.backgroundColor  = config.bgColor  || Dom.getStyle(this.element.parentNode, 'background-color');
 			
 			this.element.style.position   = 'relative';
 			this.element.style.height     = this.containerHeight + 'px';
@@ -113,7 +110,7 @@
 			var label             = document.createElement('div');
 			label.className       = 'coverFlowLabel';
 			label.id              = Dom.generateId();
-			label.style.top       = (this.containerHeight * this.imageHeightRatio * 1.3) + 'px';
+			label.style.top       = (this.containerHeight * (1 + this.reflectionRatio) * 1.3) + 'px';
 			label.style.width     = this.containerWidth + 'px';
 			label.style.zIndex    = this.selectedImageZIndex + 10;
 			this.labelElement     = this.element.appendChild(label);
@@ -205,7 +202,7 @@
 		},
 		
 		getRightStart: function() {
-			return this.containerWidth - this.sideRatio * this.containerWidth;
+			return this.containerWidth * (1 - this.sideRatio);
 		},
 		
 		getLeftStart: function() {
@@ -228,11 +225,12 @@
 				var coverFlowItem = new CoverFlowItem(image, {
 					scaledWidth:      scaled.width, 
 					scaledHeight:     scaled.height, 
+          reflectionRatio:  this.reflectionRatio,
 					bgColor:          this.backgroundColor,
 					onclick: {fn: this.select, scope: this}
 				});
         coverFlowItem.element.style.position = 'absolute';
-        coverFlowItem.setTop(this.containerHeight * this.imageHeightRatio - coverFlowItem.canvas.height / 2);
+        coverFlowItem.setTop((this.containerHeight - coverFlowItem.canvas.height) / 2);
 				this.coverFlowItems.push(coverFlowItem);
 			};
 			delete this.images;
@@ -240,9 +238,13 @@
 		
     scaledDimensions: function(image){
 			var factor = 1.0, width = image.width, height = image.height; 
-      var maxWidth = this.containerWidth * this.imageWidthRatio, maxHeight = this.containerHeight * this.imageHeightRatio;
+      var maxWidth = this.containerWidth, maxHeight = this.containerHeight / (1 +this.reflectionRatio);
 
-			if(height > maxHeight	|| width > maxWidth){
+			if (height > maxHeight && width < maxWidth){
+				factor =  maxHeight / height;
+      } else if (height < maxHeight && width > maxWidth){
+				factor =  maxWidth / width;
+      } else if (height > maxHeight && width > maxWidth){
 				factor = (height > width) ? maxHeight / height : maxWidth / width;
 			}
 
@@ -320,7 +322,7 @@
 				var scaledWidth   = options.scaledWidth;
 				var scaledHeight  = options.scaledHeight;
 				
-				imageCanvas.height = 1.5 * scaledHeight; // reflection
+				imageCanvas.height = (1 + options.reflectionRatio) * scaledHeight; // reflection
 				imageCanvas.width = scaledWidth;
 				
 				var ctx = imageCanvas.getContext('2d');
@@ -340,7 +342,7 @@
 				ctx.save();
 				ctx.translate(0, scaledHeight);
 				ctx.globalCompositeOperation = 'destination-out';
-				var grad = ctx.createLinearGradient( 0, 0, 0, scaledHeight / 2 );
+				var grad = ctx.createLinearGradient( 0, 0, 0, scaledHeight * options.reflectionRatio );
 				grad.addColorStop(1, 'rgba(0, 0, 0, 1)');
 				grad.addColorStop(0, 'rgba(0, 0, 0, 0.75)');
 				ctx.fillStyle = grad;
@@ -363,7 +365,6 @@
 		},
 		
 		drawInPerspective: function(direction, frameSize){
-      console.log("DIP");
 			var canvas  = this.element;
 			var image   = this.canvas;
 
@@ -382,7 +383,6 @@
 			var alpha = angle * Math.PI/180;
 			
 			if(alpha > 0){ // if we have an angle greater than 0 then apply the perspective
-        // console.log('drawing image with perspective: '+canvas.id);  
 				var right = (direction == -1);
 
 				var initialX=0, finalX=0, initialY=0, finalY=0;
@@ -462,7 +462,6 @@
 				ctx.drawImage(perspectiveCanvas, initialX, 0, perspectiveWidth, destinationHeight, 0, 0, perspectiveWidth, destinationHeight);
 			
 			} else {
-        //console.log('drawing image without perspective: '+canvas.id);  
 				canvas.width  = perspectiveCanvas.width;
 				canvas.height = perspectiveCanvas.height;
 				perspectiveCtx.drawImage(image, 0, 0, originalWidth, originalHeight, 0, 0, destinationWidth, destinationHeight);
@@ -559,7 +558,6 @@
         },
         
         doOnTween : function() {
-          console.log('DOT');
           for (var i=0; i < this.runtimeItems.length; i++) 
             this.setItemAttributes(this.runtimeItems[i]); 
         },
