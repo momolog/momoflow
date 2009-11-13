@@ -298,7 +298,7 @@
 		},
 		
 		setLeft: function(left){
-			this.element.style.left = left + 'px';
+			this.element.style.left = Math.ceil(left) + 'px';
 		},
 		
 		getLeft: function(){
@@ -517,7 +517,7 @@
             return this.startTime;
         },      
         
-        doMethod: function(start, end) {
+        calcInterValue : function(start, end) {
             return this.method(this.currentFrame, start, end - start, this.totalFrames);
         },        
         
@@ -583,27 +583,30 @@
         },
         
         setItemAttributes: function(item){
-        	for(var attr in item.attribute){
-        		var value = Math.ceil(this.doMethod(item.attribute[attr].start, item.attribute[attr].end));
+          var cfItem = item.item;
+          var atts = item.attribute;
+        	for(var key in atts){
+            console.log (key+" "+cfItem.element.id);
+            var attr  = atts[key];
+        		var value = this.calcInterValue(attr.start, attr.end);
+            var left  = value;
         		
-        		if(attr == 'angle'){
-        			item.item.angle = value;
-        			var frameSize = Math.ceil(this.doMethod(3, 1));
-        			item.item.drawInPerspective(item.attribute[attr].perspectiveDirection, frameSize);
-        			var left;
-        			if(item.attribute[attr].center){
-        				left = this.doMethod(item.item.getLeft(), this.center - item.item.element.width/2);
-        			}else{
+        		if(key == 'angle'){
+        		  var targetPos;
+              cfItem.angle  = value;
+        			cfItem.drawInPerspective(attr.perspectiveDirection, this.calcInterValue(3, 1));
+
+        			if(attr.center){
+        				targetPos = this.center - cfItem.element.width/2;
+        			} else {
         				if(this.direction == 1)
-        					left = this.doMethod(item.item.getLeft(), this.startLeftPos - item.item.element.width);
+        					targetPos = this.startLeftPos - cfItem.element.width;
         				else
-        					left = this.doMethod(item.item.getLeft(), this.startRightPos);
+        					targetPos = this.startRightPos;
         			}
-        			item.item.setLeft(Math.ceil(left));
-        		
-        		}else{
-        			item.item.setLeft(value);
-        		}
+        			left = this.calcInterValue(cfItem.getLeft(), targetPos);
+        		} 
+        	  cfItem.setLeft(left);
         	}
         }
 	};
