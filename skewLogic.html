@@ -1,0 +1,180 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+
+	<title>slicing test</title>
+
+	<style type="text/css" media="screen">
+		* 			      { outline : none; -moz-outline : none -moz-mac-focusring; }
+		#hd h1 			  { font-size: 300%; font-weight: bold; color: #000; }
+		#source-img		{ display:none}
+		canvas, #source-img, #controls   { border: 1px solid #ccc; float: left; }
+		
+		#angle-slider		{ position: relative; width: 400px;}
+		#angle-bkgd		  { position: absolute; top: 12px; left: 8px; width: 200px; height: 3px; overflow: hidden; border: 1px solid #aaa; background: #eee; }
+		#angle-scale		{ position: absolute; top: 0; left: 8px; width: 100px; height: 3px; overflow: hidden; border-right: 1px solid #666; background: #f4f4f4; }
+	</style>
+
+	<!--[if IE]><script type="text/javascript" src="js/excanvas.js"></script><![endif]-->
+	<script type="text/javascript" src="http://yui.yahooapis.com/2.5.2/build/utilities/utilities.js"></script> 
+	<script type="text/javascript" src="http://yui.yahooapis.com/2.5.2/build/slider/slider-min.js"></script> 
+	<script type="text/javascript">
+
+		var YD = YAHOO.util.Dom,
+		    YE = YAHOO.util.Event;
+
+		var canvas, context, img, widthSlider, scalingSlider, pw, sf = 1;
+
+    function init() {
+      cache = {};
+      canvi = {};
+      angle = 0;
+      var reflectionRatio = 0.6;
+      var reflectivity    = 0.4;
+      var maxSize         = 300;
+
+			img                 = YD.get('source-img');
+			finalCanvas         = YD.get('cv');
+      finalContext        = finalCanvas.getContext('2d');
+      reflectionCanvas    = drawReflection(img, maxSize, reflectionRatio, reflectivity);
+
+			finalCanvas.width        = reflectionCanvas.width;
+			finalCanvas.height       = reflectionCanvas.height;
+			finalCanvas.style.width  = reflectionCanvas.width+"px";
+			finalCanvas.style.height = reflectionCanvas.height+"px";
+
+			angleSlider = YAHOO.widget.Slider.getHorizSlider('angle-slider', 'angle-handle', 0, 200);
+			angleSlider.subscribe("change", function(offsetFromStart) {
+        angle = Math.ceil(offsetFromStart/100*90-90);
+        YD.get('angle-output').innerHTML = angle;
+				redraw(angle, true);
+			});
+      angleSlider.setValue(100);
+
+      redraw(angle, true);
+
+      var ang;
+      for (ang=-70; ang<=70; ang++){
+        // redraw(ang, false);
+      }
+			
+		}
+    
+    function drawReflection(img, maxSize, ratio, reflectivity){
+      maxSize       = maxSize       || 300;
+      ratio         = ratio         || 0.5;
+      reflectivity  = reflectivity  || 0.5;
+        
+      var w      = img.width;
+      var h      = img.height;
+      var fac    = (w > h) ? maxSize / w : maxSize / h;
+      var wNew   = w * fac; 
+      var hNew   = h * fac;
+      var offset = (wNew > hNew) ? (wNew - hNew) : 0;
+
+      var canvas    = document.createElement('canvas');
+			canvas.width  = wNew;
+			canvas.height = Math.max(wNew, hNew) * (1 + ratio);
+      ctx           = canvas.getContext('2d');
+
+      //draw the reflection image
+      ctx.save();
+      ctx.translate(0, offset + (2 * hNew));
+      ctx.scale(1, -1);
+      ctx.drawImage(img, 0, 0, wNew, hNew);
+      ctx.restore();
+      //create the gradient effect
+      ctx.save();
+      ctx.translate(0, offset + hNew);
+      ctx.globalCompositeOperation = 'destination-out';
+      var grad = ctx.createLinearGradient( 0, offset + 0, 0, hNew * ratio );
+      grad.addColorStop(1, 'rgba(0, 0, 0, 1)');
+      grad.addColorStop(0, 'rgba(0, 0, 0, '+(1-reflectivity)+')');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, wNew, offset + hNew);
+      //apply the background color to the gradient
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle   = '#ffffff';
+      ctx.globalAlpha = 0.8;
+      ctx.fillRect(0, 0 , wNew, hNew);
+      ctx.restore();
+      //draw the image
+      ctx.save();
+      ctx.translate(0, 0);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.drawImage(img, 0, offset + 0, wNew, hNew);
+      ctx.restore();
+      return canvas;
+    }
+
+
+		function redraw(angle, show) {
+      if (!canvi[angle]) {
+        var canvas    = document.createElement('canvas');
+        canvi[angle]  = canvas;
+        canvas.width  = reflectionCanvas.width;
+        canvas.height = reflectionCanvas.height;
+        skew(canvas.getContext('2d'), reflectionCanvas, angle);
+      }
+      if (show) {
+        finalContext.clearRect(0, 0, reflectionCanvas.width, reflectionCanvas.height);
+        finalContext.drawImage(canvi[angle], 0, 0);
+      }
+		}
+		
+    function skew(context, img, angle) {
+      // console.log(">>>> angle:"+ angle);
+      var cos = Math.cos(angle * Math.PI / 180);
+      if (cos <= 0) return;
+
+			var w = img.width;
+      var h = img.height;
+
+      var w2 = w * cos;
+      if (w2 < 1) return;
+
+      var scalingFactor     = 0.6 + 0.4 * cos;
+      var sliceNum          = w2 / 3;
+      var sliceWidthOrigin  = w / sliceNum;                    
+
+			var sliceWidthDest    = sliceWidthOrigin * w2 / w;
+      var heightDelta       = h * ((1 - scalingFactor) / sliceNum);
+      var xOffset           = Math.ceil(w * (1 - cos) / 2);
+
+			for(var n = 0; n < sliceNum; n++) {
+				// Source: where to take the slice from.
+				sx = Math.floor(sliceWidthOrigin * n);
+				sy = 0;
+				sw = Math.floor(sliceWidthOrigin);
+				sh = h;
+	
+				// Destination: where to draw the slice to (the transformation happens here).
+				dx = xOffset + (n * sliceWidthDest);
+        dy = (angle > 0) ? ((heightDelta * n) / 3) : heightDelta * sliceNum / 3 - heightDelta * n /3; 
+				dw = sliceWidthDest;
+        dh = (angle > 0) ? h - (heightDelta * n) : h * scalingFactor + heightDelta * n;
+
+        // console.log(sx+" "+sy+" "+sw+" "+sh+" "+dx+" "+dy+" "+dw+" "+dh);
+				context.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);	
+			}
+		}
+		
+		YAHOO.util.Event.on(window, 'load', init);
+	</script>
+
+</head>
+  <body>
+    <img src="images/08.jpg" id="source-img" />
+
+    <div id="controls">
+      <div id="angle-slider" tabindex="0" title="angle">
+        <div id="angle-bkgd"></div>
+        <div id="angle-handle"><img alt="" src="images/slider.gif" /></div> 
+      </div>
+      <div id="angle-output">--</div>
+    </div>
+
+    <canvas id="cv"></canvas>
+
+  </body>
+</html>

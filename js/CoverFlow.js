@@ -367,22 +367,24 @@
 		drawInPerspective: function(direction, frameSize){
 			var canvas  = this.element;
 			var image   = this.canvas;
+			var ctx     = canvas.getContext('2d');
 
 			var angle   = Math.ceil(this.angle);
-			var ctx;
 			var originalWidth     = image.width;
 			var originalHeight    = image.height;
 			var destinationWidth  = originalWidth;  // for future use
 			var destinationHeight = originalHeight; // for future use
 			
-			var perspectiveCanvas     = document.createElement('canvas');
-			perspectiveCanvas.height  = destinationHeight;
-			perspectiveCanvas.width   = destinationWidth;
-			var perspectiveCtx        = perspectiveCanvas.getContext('2d');
-
 			var alpha = angle * Math.PI/180;
 			
-			if(alpha > 0){ // if we have an angle greater than 0 then apply the perspective
+			if (alpha > 0) { 
+        // if we have an angle greater than 0 then apply the perspective
+
+        var perspectiveCanvas     = document.createElement('canvas');
+        perspectiveCanvas.height  = destinationHeight;
+        perspectiveCanvas.width   = destinationWidth;
+        var perspectiveCtx        = perspectiveCanvas.getContext('2d');
+
 				var right = (direction == -1);
 
 				var initialX=0, finalX=0, initialY=0, finalY=0;
@@ -434,22 +436,19 @@
 				}
 
 				perspectiveWidth = finalX - initialX;
-				originalCanvasWidth = destinationWidth;
 				canvas.width = perspectiveWidth;
-				
-				ctx = canvas.getContext('2d');
 				
 				//remove exceeded pixels
 				ctx.beginPath();
-				if(right){
+				if (right){
 					ctx.moveTo(0, 0);
 					ctx.lineTo(finalX, finalY);
 					ctx.lineTo(finalX, finalY + (destinationHeight - 2*finalY));
 					ctx.lineTo(0, destinationHeight);
 					ctx.lineTo(0,0);
-				}else{
-					var initialX1 = initialX - (originalCanvasWidth - perspectiveWidth);
-					var finalX1 = finalX - (originalCanvasWidth - perspectiveWidth);
+				} else {
+					var initialX1 = initialX - (destinationWidth - perspectiveWidth);
+					var finalX1   = finalX   - (destinationWidth - perspectiveWidth);
 					ctx.moveTo(0, initialY);
 					ctx.lineTo(finalX1, finalY);
 					ctx.lineTo(finalX1, destinationHeight);
@@ -462,13 +461,9 @@
 				ctx.drawImage(perspectiveCanvas, initialX, 0, perspectiveWidth, destinationHeight, 0, 0, perspectiveWidth, destinationHeight);
 			
 			} else {
-				canvas.width  = perspectiveCanvas.width;
-				canvas.height = perspectiveCanvas.height;
-				perspectiveCtx.drawImage(image, 0, 0, originalWidth, originalHeight, 0, 0, destinationWidth, destinationHeight);
-				ctx = canvas.getContext('2d');
-				ctx.clearRect(0, 0, canvas.width, canvas.height);
-				ctx.drawImage(perspectiveCanvas, 0, 0);
-        
+				canvas.width  = destinationWidth;
+				canvas.height = destinationHeight;
+				ctx.drawImage(image, 0, 0, originalWidth, originalHeight, 0, 0, destinationWidth, destinationHeight);
 			}
 		}
 		
@@ -586,7 +581,6 @@
           var cfItem = item.item;
           var atts = item.attribute;
         	for(var key in atts){
-            console.log (key+" "+cfItem.element.id);
             var attr  = atts[key];
         		var value = this.calcInterValue(attr.start, attr.end);
             var left  = value;
