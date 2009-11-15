@@ -2,52 +2,81 @@
 <html>
 <head>
 	<title>SkewLogic</title>
-  <script type="text/javascript" src="http://jqueryui.com/latest/jquery-1.3.2.js"></script>
-  <script type="text/javascript" src="http://jqueryui.com/latest/ui/ui.core.js"></script>
-  <script type="text/javascript" src="http://jqueryui.com/latest/ui/ui.slider.js"></script>
+  <script type="text/javascript" src="js/jquery-1.3.2.js"></script>
+  <script type="text/javascript" src="js/ui.core.js"></script>
+  <script type="text/javascript" src="js/ui.slider.js"></script>
   <!--[if IE]><script type="text/javascript" src="js/excanvas.js"></script><![endif]-->
-  <link   type="text/css"       href="http://jqueryui.com/latest/themes/base/ui.all.css" rel="stylesheet" />
+  <link   type="text/css"       href="css/ui.all.css" rel="stylesheet" />
 	<script type="text/javascript">
 
     $(document).ready(function() {
-      cache = {};
       canvi = {};
       angle = 0;
+      grid  = 5;
       var reflectionRatio = 0.6;
       var reflectivity    = 0.4;
       var maxSize         = 500;
 
-			img                 = $('source-img');
-			finalCanvas         = $('cv');
+      img                 = document.createElement('img');
+      finalCanvas         = document.createElement('canvas');
       finalContext        = finalCanvas.getContext('2d');
-      reflectionCanvas    = drawReflection(img, maxSize, reflectionRatio, reflectivity);
+      document.body.appendChild(finalCanvas);
+      // finalCanvas.style.opacity = 1;
 
-			finalCanvas.width        = reflectionCanvas.width;
-			finalCanvas.height       = reflectionCanvas.height;
-			finalCanvas.style.width  = reflectionCanvas.width+"px";
-			finalCanvas.style.height = reflectionCanvas.height+"px";
+      $(img).load(function(){
+        reflectionCanvas    = drawReflection(img, maxSize, reflectionRatio, reflectivity);
 
-			angleSlider = $('angle-slider').slider();
-			angleSlider.subscribe("change", function(offsetFromStart) {
-        angle = Math.ceil(offsetFromStart/100*90-90);
-        $('angle-output').innerHTML = angle;
-				redraw(angle, true);
-			});
-      angleSlider.setValue(100);
+        finalCanvas.width        = reflectionCanvas.width;
+        finalCanvas.height       = reflectionCanvas.height;
+        finalCanvas.style.width  = reflectionCanvas.width+"px";
+        finalCanvas.style.height = reflectionCanvas.height+"px";
 
-      redraw(angle, true);
+        angleSlider = $('#angle-slider').slider({
+          animate: true,
+          min: -90,
+          max: 90,
+          change : function(event, s){
+            from  = {a: angle};
+            to    = {a: s.value};
+            var fps = 0;
+            var lastAngle = angle;
+            jQuery(from).animate(to, {
+              duration: 1000,
+              step: function() {
+                fps++;
+                var newAngle = Math.floor(this.a);
+                if (newAngle != lastAngle) {
+                  redraw(newAngle, true);
+                  lastAngle = newAngle;
+                }
+              },
+              complete: function(){
+                angle = s.value; 
+                // console.log(fps+" fps: new grid: "+grid);
+                if (fps < 40) grid++;
+                if (fps > 70 && grid > 3) grid --; 
+                // finalCanvas.style.opacity *= 0.9;
+              }
+            });
+          }
+        });
 
-      var ang;
-      for (ang=-70; ang<=70; ang++){
-        // redraw(ang, false);
-      }
+        redraw(0, true);
+
+        for (var ang=-30; ang<=30; ang++){ redraw(ang, false); }
+      
+      });
+
+      img.src             = "images/07.jpg";
+
 		});
     
     function drawReflection(img, maxSize, ratio, reflectivity){
       maxSize       = maxSize       || 300;
       ratio         = ratio         || 0.5;
       reflectivity  = reflectivity  || 0.5;
-        
+
+      // console.log(img.width+" "+img.height);
       var w      = img.width;
       var h      = img.height;
       var fac    = (w > h) ? maxSize / w : maxSize / h;
@@ -64,6 +93,7 @@
       ctx.save();
       ctx.translate(0, offset + (2 * hNew));
       ctx.scale(1, -1);
+      // console.log(img+" "+wNew+" "+hNew);
       ctx.drawImage(img, 0, 0, wNew, hNew);
       ctx.restore();
       //create the gradient effect
@@ -77,7 +107,7 @@
       ctx.fillRect(0, 0, wNew, offset + hNew);
       //apply the background color to the gradient
       ctx.globalCompositeOperation = 'destination-over';
-      ctx.fillStyle   = '#ffffff';
+      ctx.fillStyle   = '#999999';
       ctx.globalAlpha = 0.8;
       ctx.fillRect(0, 0 , wNew, hNew);
       ctx.restore();
@@ -91,7 +121,8 @@
     }
 
 
-		function redraw(angle, show) {
+    function redraw(angle, show) {
+      // console.log(angle);
       if (!canvi[angle]) {
         var canvas    = document.createElement('canvas');
         canvi[angle]  = canvas;
@@ -117,7 +148,7 @@
       if (w2 < 1) return;
 
       var scalingFactor     = 0.6 + 0.4 * cos;
-      var sliceNum          = w2 / 3;
+      var sliceNum          = w2 / grid;
       var sliceWidthOrigin  = w / sliceNum;                    
 
 			var sliceWidthDest    = sliceWidthOrigin * w2 / w;
@@ -138,16 +169,22 @@
         dh = (angle > 0) ? h - (heightDelta * n) : h * scalingFactor + heightDelta * n;
 
         // console.log(sx+" "+sy+" "+sw+" "+sh+" "+dx+" "+dy+" "+dw+" "+dh);
-				context.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);	
+        try {
+          context.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);	
+        } catch (e) {
+        
+        }
 			}
 		}
 	</script>
 
-	<style type="text/css" media="screen">
+  <style type="text/css" media="screen">
+      
+    body          { background-color: #999999; }
 		* 			      { outline : none; -moz-outline : none -moz-mac-focusring; }
 		#hd h1 			  { font-size: 300%; font-weight: bold; color: #000; }
 		#source-img		{ display:}
-		canvas, #source-img, #controls   { border: 1px solid #ccc; float: left; }
+		canvas, #source-img, #controls   { border: 0px solid #ccc; float: left; }
 		
 		#angle-slider		{ position: relative; width: 400px;}
 		#angle-bkgd		  { position: absolute; top: 12px; left: 8px; width: 200px; height: 3px; overflow: hidden; border: 1px solid #aaa; background: #eee; }
@@ -157,14 +194,7 @@
 
 </head>
   <body>
-    <img src="images/08.jpg" id="source-img" />
-
-    <div id="controls">
-      <div id="angle-slider"></div>
-      <div id="angle-output">--</div>
-    </div>
-
-    <canvas id="cv"></canvas>
-
+    <img src="" id="source-img" />
+    <div id="angle-slider"></div>
   </body>
 </html>
