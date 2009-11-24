@@ -44,11 +44,14 @@ CF = function(container, imgs, options){
     if (options.onclick)        $(finalCanvas).bind('click', options.onclick);
     if (options.onclickCenter)  $(finalCanvas).bind('click', function(){ if (myself.angle == 0) options.onclickCenter(finalCanvas, myself.index, reflectionCanvas.geometry); });
 
-    finalCanvas.style.position  = "absolute";
-    finalCanvas.style.zIndex    = items.length + 1;
-    
-    var finalContext        = finalCanvas.getContext('2d');
+    $(finalCanvas).css({
+      position: 'absolute',
+      zIndex:   items.length + 1,
+      left:     -1000
+    });
     container[0].appendChild(finalCanvas);
+    
+    var finalContext = finalCanvas.getContext('2d');
 
     $(img).load(function(){
       reflectionCanvas          = drawReflection(img, maxSize, reflectionRatio, reflectivity, $(container).css('background-color'));
