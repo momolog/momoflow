@@ -6,7 +6,14 @@ CF = function(container, imgs, options){
   var loadedImgs  = 0;
   var position    = 0;
 
-  myCF.center    = container.width()/2;
+  function scaleTo(obj, maxSize) {
+    var w   = obj.width;
+    var h   = obj.height;
+    var fac = (w > h) ? maxSize / w : maxSize / h;
+    return {width: w * fac, height: h * fac}
+  }
+
+  myCF.center   = container.width()/2;
   $(window).bind('resize', function(){ 
     myCF.center = container.width()/2;
     myCF.setPosition(position);
@@ -35,30 +42,73 @@ CF = function(container, imgs, options){
 
     var reflectionRatio = 0.6;
     var reflectivity    = 0.4;
-    var maxSize         = Math.floor($('#container').height()/(1+reflectionRatio));
+    var maxSize         = Math.floor(container.height()/(1+reflectionRatio));
 
     var reflectionCanvas;
-    var img             = document.createElement('img');
-    var finalCanvas     = createCanvas();
+    var img          = document.createElement('img');
+    var finalCanvas  = createCanvas();
+    var finalContext = finalCanvas.getContext('2d');
 
     if (options.onclick)        $(finalCanvas).bind('click', options.onclick);
     if (options.onclickCenter)  $(finalCanvas).bind('click', function(){ if (myself.angle == 0) options.onclickCenter(finalCanvas, myself.index, reflectionCanvas.geometry); });
+    if (options.lightBox)       $(finalCanvas).bind('click', function(){ 
+      if (myself.angle == 0) {
+        var zoomImg     = document.createElement('img');
+        zoomImg.src     = img.src;
 
-    $(finalCanvas).css({
-      position: 'absolute',
-      zIndex:   items.length + 1,
-      left:     -1000
-    });
-    container[0].appendChild(finalCanvas);
-    
-    var finalContext = finalCanvas.getContext('2d');
+        var canvasPos   = $(finalCanvas).offset();
+        var original    = reflectionCanvas.geometry;
+        var scaled      = scaleTo(original, Math.min($(window).width(), $(window).height()) - 100);
+
+        var originalPos = {
+          left:     canvasPos.left,
+          top:      canvasPos.top + original.top,
+          width:    original.width,
+          height:   original.height
+        };
+
+        var zoomedPos = {
+          width:  scaled.width,
+          height: scaled.height,
+          left:   canvasPos.left - (scaled.width - original.width) / 2,
+          top:    ($(window).height() - scaled.height) / 2
+        }; 
+
+        $(zoomImg).css($.extend(originalPos, {
+          position: 'absolute',
+          zIndex:   10000
+        })).appendTo('body');
+
+        container.animate({ opacity: 0.3 }, 200);
+
+        $(zoomImg).animate(zoomedPos, 200, 'swing', 
+          function(){ 
+            $(document).bind('click', function clk(){
+              $(document).unbind('click', clk);
+
+              container.animate({ opacity: 1 }, 200); 
+
+              $(zoomImg).animate(originalPos, 200, 'swing', function(){ 
+                $(zoomImg).remove();
+              });
+            }); 
+          }
+        );
+      }
+    }); 
 
     $(img).load(function(){
-      reflectionCanvas          = drawReflection(img, maxSize, reflectionRatio, reflectivity, $(container).css('background-color'));
-      finalCanvas.width         = reflectionCanvas.width;
-      finalCanvas.height        = reflectionCanvas.height;
-      finalCanvas.style.width   = reflectionCanvas.width+"px";
-      finalCanvas.style.height  = reflectionCanvas.height+"px";
+      reflectionCanvas   = drawReflection(img, maxSize, reflectionRatio, reflectivity, container.css('background-color'));
+      finalCanvas.width  = reflectionCanvas.width;
+      finalCanvas.height = reflectionCanvas.height;
+
+      $(finalCanvas).css({
+        position: 'absolute',
+        zIndex:   items.length + 1,
+        left:     -1000,
+        width:    reflectionCanvas.width,
+        height:   reflectionCanvas.height
+      }).appendTo(container);
 
       if (options.prerender) for (var ang=-maxAngle; ang<=maxAngle; ang ++){ redraw(ang, false); }
       redraw(0, true);
@@ -107,13 +157,15 @@ CF = function(container, imgs, options){
         step: function() {
           fps++;
           var newAngle = (options.noTurn) ? 0 : Math.floor(this.angle);
-          finalCanvas.style.zIndex  = 2000 - Math.floor(Math.abs(this.left));
           if (newAngle != lastAngle) {
             redraw(newAngle, true);
             lastAngle = newAngle;
           }
-          finalCanvas.style.left = Math.floor(myCF.center - spacer(this.left, maxSize) - finalCanvas.width/2 ) + "px";
-          if (options.comeToFront)    finalCanvas.style.top  = this.top+"px";
+          $(finalCanvas).css({
+            left:   Math.floor(myCF.center - spacer(this.left, maxSize) - finalCanvas.width/2 ),
+            zIndex: 2000 - Math.floor(Math.abs(this.left))
+          });
+          if (options.comeToFront)    finalCanvas.style.top     = this.top+"px";
           if (options.fadeInDistance) finalCanvas.style.opacity = Math.pow(0.99, Math.abs(newAngle));
         },
         complete: function(){
@@ -130,50 +182,48 @@ CF = function(container, imgs, options){
     function drawReflection(img,  maxSize,  ratio,  reflectivity, backgroundColor){
       // examples:                300       0.5     0.5           #ffffff
 
-      var w      = img.width;
-      var h      = img.height;
-      var fac    = (w > h) ? maxSize / w : maxSize / h;
-      var wNew   = w * fac; 
-      var hNew   = h * fac;
-      var offset = (wNew > hNew) ? (wNew - hNew) : 0;
+      var s = scaleTo(img, maxSize);
+      var w = s.width;
+      var h = s.height;
+      var offset = (w > h) ? (w - h) : 0;
 
       var canvas    = createCanvas();
-      canvas.width  = wNew;
-      canvas.height = Math.max(wNew, hNew) * (1 + ratio);
+      canvas.width  = w;
+      canvas.height = Math.max(w, h) * (1 + ratio);
       ctx           = canvas.getContext('2d');
 
       // draw the reflection image
       ctx.save();
-      ctx.translate(0, offset + (2 * hNew));
+      ctx.translate(0, offset + (2 * h));
       ctx.scale(1, -1);
-      ctx.drawImage(img, 0, 0, wNew, hNew);
+      ctx.drawImage(img, 0, 0, w, h);
       ctx.restore();
 
       // create the gradient effect
       ctx.save();
-      ctx.translate(0, offset + hNew);
+      ctx.translate(0, offset + h);
       ctx.globalCompositeOperation = 'destination-out';
-      var grad = ctx.createLinearGradient( 0, offset + 0, 0, hNew * ratio );
+      var grad = ctx.createLinearGradient( 0, offset + 0, 0, h * ratio );
       grad.addColorStop(1, 'rgba(0, 0, 0, 1)');
       grad.addColorStop(0, 'rgba(0, 0, 0, '+(1-reflectivity)+')');
       ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, wNew, offset + hNew);
+      ctx.fillRect(0, 0, w, offset + h);
 
       // apply background color to the gradient
       ctx.globalCompositeOperation = 'destination-over';
       ctx.fillStyle   = backgroundColor;
       ctx.globalAlpha = 0.8;
-      ctx.fillRect(0, 0 , wNew, hNew);
+      ctx.fillRect(0, 0 , w, h);
       ctx.restore();
 
       // draw the image
       ctx.save();
       ctx.translate(0, 0);
       ctx.globalCompositeOperation = 'source-over';
-      ctx.drawImage(img, 0, offset + 0, wNew, hNew);
+      ctx.drawImage(img, 0, offset + 0, w, h);
       ctx.restore();
 
-      canvas.geometry = { x: 0, y: offset, w: wNew, h: hNew };
+      canvas.geometry = { left: 0, top: offset, width: w, height: h };
 
       return canvas;
     }
@@ -217,7 +267,8 @@ CF = function(container, imgs, options){
   jQuery.each(imgs, function(index, img){
     items.push(new CFItem(img, {
       onclick:        function(){myCF.setPosition(imgs.length - 1 - index);},
-      onclickCenter:  (options.onclick) ? options.onclick : null
+      onclickCenter:  options.onclick,
+      lightBox:       options.lightBox
     }));
   }) 
 };

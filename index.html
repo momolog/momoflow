@@ -2,7 +2,7 @@
 <html>
 <head>
 	<title>MomoFlow</title>
-  <!--[if IE]><script type="text/javascript" src="js/excanvas.compiled.js"></script><![endif]-->
+  <!--[if IE]><script type="text/javascript" src="js/excanvas-modified.js"></script><![endif]-->
   <script type="text/javascript" src="js/jquery-1.3.2.js"></script>
   <script type="text/javascript" src="js/ui.core.js"></script>
   <script type="text/javascript" src="js/ui.slider.js"></script>
@@ -16,17 +16,8 @@
 
       init();
 
-      /*
-        var jsonFlickrFeed = function(o) {
-          for (var i=0; i<10; i++){ images.push(o.items[i].media.m); }
-          init();
-        }
-
-        $.ajax( {
-          url: 'http://api.flickr.com/services/feeds/photos_public.gne?tags=face&lang=en-us&format=json&size=b',
-          success: function(o){ eval(o); }     
-        });
-      */
+      // var jsonFlickrFeed = function(o) { for (var i=0; i<10; i++){ images.push(o.items[i].media.m); } init(); }
+      // $.ajax({ url: 'http://api.flickr.com/services/feeds/photos_public.gne?tags=face&lang=en-us&format=json&size=b', success: function(o){ eval(o); } });
 
       function init(){
         var cf = new CF(
@@ -34,58 +25,7 @@
             onSetPosition : function(index){
               $('#slider').slider('option', 'value', index);
             },
-
-            onclick: function(element, index, geometry) {
-              var pos = $(element).offset();
-              var img = document.createElement('img');
-              var max = Math.min($(window).width(), $(window).height()) - 100;
-              var w   = geometry.w;
-              var h   = geometry.h;
-
-              img.src = images[index];
-              $(img).css({
-                position: 'absolute',
-                left:   pos.left,
-                top:    pos.top + geometry.y,
-                width:  w,
-                height: h,
-                zIndex: 10000
-              });
-
-              var fac    = (w > h) ? max / w : max / h;
-              var wNew   = w * fac; 
-              var hNew   = h * fac;
-
-              document.body.appendChild(img);
-
-              $('#container').animate({
-                opacity: 0.3
-              }, 200);
-              $(img).animate({
-                width:  wNew,
-                height: hNew,
-                left:   pos.left - (wNew - w) / 2,
-                top:    ($(window).height() - hNew) / 2
-              }, 200, 'swing', 
-                function(){ 
-                  $(document).bind('click', function clk(){
-                    $(document).unbind('click', clk);
-                    $('#container').animate({
-                      opacity: 1
-                    }, 200);
-                    $(img).animate({
-                        width:  w,
-                        height: h,
-                        left:   pos.left,
-                        top:    pos.top + geometry.y
-                      }, 200, 'swing', function(){
-                        $(img).remove();
-                      }
-                    );
-                  }); 
-                }
-              );
-            }
+            lightBox : true
           }
         );
 
