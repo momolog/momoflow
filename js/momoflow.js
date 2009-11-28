@@ -1,3 +1,14 @@
+/*!
+ * momoflow javascript coverflow
+ * http://flow.momolog.info
+ *
+ * Copyright (c) 2009 Alexander Presber
+ * Dual licensed under the MIT and GPL licenses.
+ *
+ * Date: 2009-11-27
+ */
+
+
 CF = function(container, imgs, options){
   var myCF        = this;
   var grid        = 5;
