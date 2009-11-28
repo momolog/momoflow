@@ -12,12 +12,8 @@
 
     $(document).ready(function() {
 
-      var images = [ 'images/01sedcard.jpg', 'images/02sedcard.jpg', 'images/03sedcard.jpg', 'images/04sedcard.jpg', 'images/05sedcard.jpg', 'images/06sedcard.jpg', 'images/07sedcard.jpg', 'images/08sedcard.jpg', 'images/09sedcard.jpg', 'images/10sedcard.jpg', ];
-
+      var images = jQuery.map([0,1,2,3,4,5,6,7,8,9], function(index){ return 'images/flow_'+index+'.jpg'});
       init();
-
-      // var jsonFlickrFeed = function(o) { for (var i=0; i<10; i++){ images.push(o.items[i].media.m); } init(); }
-      // $.ajax({ url: 'http://api.flickr.com/services/feeds/photos_public.gne?tags=face&lang=en-us&format=json&size=b', success: function(o){ eval(o); } });
 
       function init(){
         var cf = new CF(
